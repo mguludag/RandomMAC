@@ -13,20 +13,27 @@ MainWindow::MainWindow(QWidget *parent)
     timer = new QTimer(this);
     udpSocket = new QUdpSocket(this);
     ptr = new MyMACAddr();
+        
+        //initialize the model for store adapter names and MAC addresses
     mdl = new QStandardItemModel(0, 2, parent);
     mdl->setHeaderData(0, Qt::Horizontal, QObject::tr("Adapter"));
     mdl->setHeaderData(1, Qt::Horizontal, QObject::tr("MAC Address"));
     mdl->setHeaderData(2, Qt::Horizontal, QObject::tr("Original MAC"));
+        
     fillData();
     restoreSelected(Settings::readSettings("Adapters", "selected").toList());
     connect(timer, SIGNAL(timeout()), this, SLOT(refreshList()));
     timer->start(500);
+        //hide the attack elements
     ui->pushButton_2->hide();
     ui->checkBox->hide();
     ui->spinBox->hide();
     ui->spinBox->setEnabled(false);
+        
     if (Settings::readSettings("Startup", "Auto").toBool())
         on_pushButton_clicked();
+        
+        //if you add a -attack parameter then go to attack mode
     if (qApp->arguments().contains("-attack")) {
         ui->checkBox->show();
         ui->spinBox->show();
@@ -39,6 +46,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+//save selected adapter list before closing
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     event->ignore();
@@ -54,6 +62,7 @@ void MainWindow::on_actionDark_style_toggled(bool arg1)
         Settings::setTheme(Settings::lightFusion);
 }
 
+//fills the entire table from system adapters
 void MainWindow::fillData()
 {
     list.clear();
@@ -72,6 +81,7 @@ void MainWindow::fillData()
     //ui->treeView->resizeColumnToContents(2);
 }
 
+//save selected adapter list to file for call it during the next startup
 void MainWindow::saveSelected()
 {
     QVariantList indexesRW;
@@ -82,6 +92,7 @@ void MainWindow::saveSelected()
     Settings::writeSettings("Adapters", "selected", indexesRW);
 }
 
+//restore selected adapters from selList
 void MainWindow::restoreSelected()
 {
     for (auto &index : selList) {
@@ -93,6 +104,7 @@ void MainWindow::restoreSelected()
     }
 }
 
+//restore selected adapters from settings file
 void MainWindow::restoreSelected(QList<QVariant> indexesR)
 {
     for (auto &index : indexesR) {
@@ -105,12 +117,14 @@ void MainWindow::restoreSelected(QList<QVariant> indexesR)
     }
 }
 
+//change MAC addresses for selected adapters
 void MainWindow::changeMAC()
 {
     ptr->assignRndMAC(&selList);
     list = ptr->getAdapters();
 }
 
+//refresh the list for see new MAC addresses
 void MainWindow::refreshList()
 {
     list = ptr->getAdapters();
@@ -123,6 +137,7 @@ void MainWindow::refreshList()
     }
 }
 
+//receive manual MAC entry from edit dialog then set
 void MainWindow::sendMAC()
 {
     qDebug() << dialog->getDText().remove('-');
@@ -130,6 +145,7 @@ void MainWindow::sendMAC()
     list = ptr->getAdapters();
 }
 
+//send the broadcast packet from port 45454
 void MainWindow::broadcastDatagram()
 {
     QByteArray datagram = "Broadcast message " + QByteArray::number(messageNo);
@@ -138,6 +154,7 @@ void MainWindow::broadcastDatagram()
     ++messageNo;
 }
 
+//change MAC address to random value and starts sending broadcast package
 void MainWindow::startBroadcasting()
 {
     thread = QThread::create([&] { changeMAC(); });
@@ -145,6 +162,7 @@ void MainWindow::startBroadcasting()
     broadcastDatagram();
 }
 
+//find the original MAC address of given adapter name
 QString MainWindow::findOriginal(QString name)
 {
     QString result;
@@ -194,6 +212,7 @@ void MainWindow::on_pushButton_clicked()
     }
 }
 
+//double click a adapter to manual entry or restore original MAC address
 void MainWindow::on_treeView_doubleClicked(const QModelIndex &index)
 {
     //qDebug() << findOriginal(index.siblingAtColumn(0).data().toString());
