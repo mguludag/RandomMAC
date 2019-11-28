@@ -6,7 +6,7 @@ Then added secret feature activated by ` -attack ` argument for attack to switch
 
 # Building
 ## Requirements
-* Qt 5.13 (preferred) and older versions
+* Qt 5.13 (preferred) or older versions
 * MSVC or MinGW compiler
 
 ## TODO:
