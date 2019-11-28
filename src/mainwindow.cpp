@@ -13,30 +13,31 @@ MainWindow::MainWindow(QWidget *parent)
     timer = new QTimer(this);
     udpSocket = new QUdpSocket(this);
     ptr = new MyMACAddr();
-        
-        //initialize the model for store adapter names and MAC addresses
-    mdl = new QStandardItemModel(0, 2, parent);
+
+    //initialize the model for store adapter names and MAC addresses
+    mdl = new QStandardItemModel(0, 3, parent);
     mdl->setHeaderData(0, Qt::Horizontal, QObject::tr("Adapter"));
     mdl->setHeaderData(1, Qt::Horizontal, QObject::tr("MAC Address"));
-    mdl->setHeaderData(2, Qt::Horizontal, QObject::tr("Original MAC"));
-        
+    mdl->setHeaderData(2, Qt::Horizontal, QObject::tr("Changed"));
+
     fillData();
     restoreSelected(Settings::readSettings("Adapters", "selected").toList());
     connect(timer, SIGNAL(timeout()), this, SLOT(refreshList()));
     timer->start(500);
-        //hide the attack elements
+
+    //hide the attack elements
     ui->pushButton_2->hide();
     ui->checkBox->hide();
-    ui->spinBox->hide();
-    ui->spinBox->setEnabled(false);
-        
+    ui->doubleSpinBox->hide();
+    ui->doubleSpinBox->setEnabled(false);
+
     if (Settings::readSettings("Startup", "Auto").toBool())
         on_pushButton_clicked();
-        
-        //if you add a -attack parameter then go to attack mode
+
+    //if you add a -attack parameter then go to attack mode
     if (qApp->arguments().contains("-attack")) {
         ui->checkBox->show();
-        ui->spinBox->show();
+        ui->doubleSpinBox->show();
     }
 }
 
@@ -46,7 +47,6 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-//save selected adapter list before closing
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     event->ignore();
@@ -73,12 +73,12 @@ void MainWindow::fillData()
         mdl->insertRow(0);
         mdl->setData(mdl->index(0, 0), QString::fromStdString(itm.first));
         mdl->setData(mdl->index(0, 1), QString::fromStdString(itm.second));
-        //mdl->setData(mdl->index(0, 2), QString::fromStdString(itm.second));
+        mdl->setData(mdl->index(0, 2), "No");
     }
     ui->treeView->setModel(mdl);
     ui->treeView->resizeColumnToContents(0);
     ui->treeView->resizeColumnToContents(1);
-    //ui->treeView->resizeColumnToContents(2);
+    ui->treeView->resizeColumnToContents(2);
 }
 
 //save selected adapter list to file for call it during the next startup
@@ -100,6 +100,8 @@ void MainWindow::restoreSelected()
             ui->treeView->selectionModel()->select(data->index(), QItemSelectionModel::Select);
             ui->treeView->selectionModel()->select(data->index().siblingAtColumn(1),
                                                    QItemSelectionModel::Select);
+            ui->treeView->selectionModel()->select(data->index().siblingAtColumn(2),
+                                                   QItemSelectionModel::Select);
         }
     }
 }
@@ -113,6 +115,8 @@ void MainWindow::restoreSelected(QList<QVariant> indexesR)
             ui->treeView->selectionModel()->select(data->index(), QItemSelectionModel::Select);
             ui->treeView->selectionModel()->select(data->index().siblingAtColumn(1),
                                                    QItemSelectionModel::Select);
+            ui->treeView->selectionModel()->select(data->index().siblingAtColumn(2),
+                                                   QItemSelectionModel::Select);
         }
     }
 }
@@ -121,7 +125,7 @@ void MainWindow::restoreSelected(QList<QVariant> indexesR)
 void MainWindow::changeMAC()
 {
     ptr->assignRndMAC(&selList);
-    list = ptr->getAdapters();
+    //list = ptr->getAdapters();
 }
 
 //refresh the list for see new MAC addresses
@@ -132,7 +136,12 @@ void MainWindow::refreshList()
         for (auto data : mdl->findItems(QString::fromStdString(index.first))) {
             ui->treeView->model()->setData(data->index().siblingAtColumn(1),
                                            QString::fromStdString(index.second));
-            //qDebug() << ui->treeView->model()->data(data->index().siblingAtColumn(1)).toString();
+            if (static_cast<void>(data->index().siblingAtColumn(1)),
+                QString::fromStdString(index.second)
+                    != findOriginal(QString::fromStdString(index.first)))
+                ui->treeView->model()->setData(data->index().siblingAtColumn(2), "Yes");
+            else
+                ui->treeView->model()->setData(data->index().siblingAtColumn(2), "No");
         }
     }
 }
@@ -207,7 +216,7 @@ void MainWindow::on_pushButton_clicked()
     if (ui->checkBox->isChecked()) {
         attacktimer = new QTimer(this);
         connect(attacktimer, SIGNAL(timeout()), this, SLOT(startBroadcasting()));
-        attacktimer->start(ui->spinBox->value() * 1000);
+        attacktimer->start(ui->doubleSpinBox->value() * 1000);
         ui->pushButton_2->show();
     }
 }
@@ -215,7 +224,6 @@ void MainWindow::on_pushButton_clicked()
 //double click a adapter to manual entry or restore original MAC address
 void MainWindow::on_treeView_doubleClicked(const QModelIndex &index)
 {
-    //qDebug() << findOriginal(index.siblingAtColumn(0).data().toString());
     dialog = new Dialog;
     connect(dialog, SIGNAL(accepted()), this, SLOT(sendMAC()));
     dialog->setDText(index.siblingAtColumn(0).data().toString(),
@@ -233,7 +241,7 @@ void MainWindow::on_actionAuto_change_at_startup_toggled(bool arg1)
 
 void MainWindow::on_checkBox_toggled(bool checked)
 {
-    ui->spinBox->setEnabled(checked);
+    ui->doubleSpinBox->setEnabled(checked);
 }
 
 void MainWindow::on_pushButton_2_clicked()
