@@ -45,13 +45,15 @@ public:
     MyMACAddr();
     ~MyMACAddr();
 
+    std::random_device rd;
+
     string genRandMAC();
     string genRandMAC(int first);
     void showAdapterList();
-    unordered_map<string, string> getAdapters();
     void assignRndMAC(vector<string> *list);
     void assignOrigMAC(string name, string mac);
     //disable and enable the Adapter to effect new Changes
     HRESULT disableEnableConnections(BOOL bEnable, const wchar_t *AdapterName);
+    unordered_map<string, string> getAdapters();
+    string getAdaptersOrigAddr(string pAdapterName);
 };
-

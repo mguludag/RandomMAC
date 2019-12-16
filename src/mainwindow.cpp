@@ -15,7 +15,7 @@ MainWindow::MainWindow(QWidget *parent)
     ptr = new MyMACAddr();
 
     //initialize the model for store adapter names and MAC addresses
-    mdl = new QStandardItemModel(0, 3, parent);
+    mdl = new QStandardItemModel(0, 4, parent);
     mdl->setHeaderData(0, Qt::Horizontal, QObject::tr("Adapter"));
     mdl->setHeaderData(1, Qt::Horizontal, QObject::tr("MAC Address"));
     mdl->setHeaderData(2, Qt::Horizontal, QObject::tr("Changed"));
@@ -74,11 +74,13 @@ void MainWindow::fillData()
         mdl->setData(mdl->index(0, 0), QString::fromStdString(itm.first));
         mdl->setData(mdl->index(0, 1), QString::fromStdString(itm.second));
         mdl->setData(mdl->index(0, 2), "No");
+        mdl->setData(mdl->index(0, 3), findOriginal(QString::fromStdString(itm.first)));
     }
     ui->treeView->setModel(mdl);
     ui->treeView->resizeColumnToContents(0);
     ui->treeView->resizeColumnToContents(1);
     ui->treeView->resizeColumnToContents(2);
+    ui->treeView->hideColumn(3);
 }
 
 //save selected adapter list to file for call it during the next startup
@@ -136,9 +138,8 @@ void MainWindow::refreshList()
         for (auto data : mdl->findItems(QString::fromStdString(index.first))) {
             ui->treeView->model()->setData(data->index().siblingAtColumn(1),
                                            QString::fromStdString(index.second));
-            if (static_cast<void>(data->index().siblingAtColumn(1)),
-                QString::fromStdString(index.second)
-                    != findOriginal(QString::fromStdString(index.first)))
+            if (mdl->data(data->index().siblingAtColumn(1)).toString()
+                != mdl->data(data->index().siblingAtColumn(3)).toString())
                 ui->treeView->model()->setData(data->index().siblingAtColumn(2), "Yes");
             else
                 ui->treeView->model()->setData(data->index().siblingAtColumn(2), "No");
@@ -181,8 +182,11 @@ QString MainWindow::findOriginal(QString name)
                                   "4D36E972-E325-11CE-BFC1-08002bE10318}\\000"
                                       + QString::number(i),
                                   QSettings::NativeFormat);
-            if (findAdapter.value("DriverDesc").toString() == name)
+            if (findAdapter.value("DriverDesc").toString() == name) {
                 result = findAdapter.value("OriginalNetworkAddress").toString();
+                break;
+            }
+
         }
 
         else {
@@ -190,8 +194,10 @@ QString MainWindow::findOriginal(QString name)
                                   "4D36E972-E325-11CE-BFC1-08002bE10318}\\00"
                                       + QString::number(i),
                                   QSettings::NativeFormat);
-            if (findAdapter.value("DriverDesc").toString() == name)
+            if (findAdapter.value("DriverDesc").toString() == name) {
                 result = findAdapter.value("OriginalNetworkAddress").toString();
+                break;
+            }
         }
     }
     if (result.isNull())

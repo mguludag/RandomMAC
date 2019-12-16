@@ -38,7 +38,6 @@ MyMACAddr::~MyMACAddr()
 //-----------------------------------------------
 string MyMACAddr::genRandMAC()
 {
-    std::random_device rd;
     std::uniform_int_distribution<int> distribution(0, 254);
     stringstream temp;
     int number = 0;
@@ -59,7 +58,6 @@ string MyMACAddr::genRandMAC()
 
 string MyMACAddr::genRandMAC(int first)
 {
-    std::random_device rd;
     std::uniform_int_distribution<int> distribution(0, 254);
     stringstream temp;
     int number = 0;
@@ -187,6 +185,57 @@ unordered_map<string, string> MyMACAddr::getAdapters()
 	return result;
 }
 
+string MyMACAddr::getAdaptersOrigAddr(string pAdapterName)
+{
+    PIP_ADAPTER_INFO pAdapterInfo;
+    PIP_ADAPTER_INFO pAdapter = nullptr;
+    DWORD dwRetVal = 0;
+
+    stringstream temp;
+    string str_mac;
+
+    ULONG ulOutBufLen = sizeof(IP_ADAPTER_INFO);
+    pAdapterInfo = (IP_ADAPTER_INFO *) MALLOC(sizeof(IP_ADAPTER_INFO));
+    if (pAdapterInfo == nullptr) {
+        //cerr << "Error allocating memory needed to call GetAdaptersinfo" << endl;
+    }
+    // Make an initial call to GetAdaptersInfo to get
+    // the necessary size into the ulOutBufLen variable
+    if (GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == ERROR_BUFFER_OVERFLOW) {
+        FREE(pAdapterInfo);
+        pAdapterInfo = (IP_ADAPTER_INFO *) MALLOC(ulOutBufLen);
+        if (pAdapterInfo == nullptr) {
+            //cerr << "Error allocating memory needed to call GetAdaptersinfo\n" << endl;
+        }
+    }
+
+    if ((dwRetVal = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen)) == NO_ERROR) {
+        pAdapter = pAdapterInfo;
+        while (pAdapter) {
+            if (pAdapter->Description == pAdapterName) {
+                for (UINT i = 0; i < pAdapter->AddressLength; i++) {
+                    temp << setfill('0') << setw(2) << hex << (int) pAdapter->Address[i];
+                }
+                str_mac = temp.str();
+                temp.str("");
+                temp.rdbuf();
+                for (auto &c : str_mac) {
+                    c = toupper(c);
+                }
+                break;
+            } else {
+                pAdapter = pAdapter->Next;
+            }
+        }
+    } else {
+        //cerr << "GetAdaptersInfo failed with error: " << dwRetVal << endl;
+    }
+    if (pAdapterInfo)
+        FREE(pAdapterInfo);
+
+    return str_mac;
+}
+
 //-----------------------------------------------
 // Assing Random MAC address to Network Interface
 //-----------------------------------------------
@@ -242,12 +291,6 @@ void MyMACAddr::assignRndMAC(vector<string> *list)
                                 //result.insert({item, temp});
                                 disableEnableConnections(false, wAdapterName);
                                 disableEnableConnections(true, wAdapterName);
-                            } else {
-                                if (tried < 2) {
-                                    ++tried;
-                                    temp = genRandMAC(02);
-                                    goto attempt;
-                                }
                             }
                         }
                     }
